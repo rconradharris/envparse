@@ -2,15 +2,15 @@
 envparse
 ========
 
-If you use Heroku and/or subscribe to the tenets of
-`_12 Factor App <http://www.12factor.net/>`_
+If you use Heroku and/or subscribe to the tenets of the
+`12 Factor App <http://www.12factor.net/>`_
 you'll be using a lot of environment variable-based configuration in your app.
-``os.environ`` is a great choice to start off with, but as your app grows,
-you'll find yourself duplicating quite a bit of around parsing these
-environment variables.
+``os.environ`` is a great choice to start off with but over time you'll find
+yourself duplicating quite a bit of code around handling raw environment
+variables.
 
-``envparse`` aims to solves these problems once, in a consistent way.
-Specifically:
+``envparse`` aims to eliminate this duplicated, often inconsistent parsing
+code and instead provide a single, easy-to-use wrapper that handles:
 
 * Casting environment variables to a type::
 
@@ -26,10 +26,10 @@ Specifically:
     rows = query(limit=max_rows)
 
 * Proxying values, useful in Heroku for wiring up the environment
-  variables they provide with the ones that your app actually uses::
+  variables they provide to the ones that your app actually uses::
 
-    MAILGUN_SMTP_LOGIN=foo
-    SMTP_LOGIN=$MAILGUN_SMTP_LOGIN # This variable is proxied
+    MAILGUN_SMTP_LOGIN=foo # Heroku provides this with addon
+    SMTP_LOGIN=$MAILGUN_SMTP_LOGIN # App uses proxied variable
 
     smtp_login = env('SMTP_LOGIN')
     assert smtp_login == 'foo'
@@ -40,6 +40,7 @@ Specifically:
     MAIL_ENABLED=0
     SMTP_LOGIN=bar
 
+    # Bind schema to Env object to get a schema-based lookup
     env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=(str, 'foo'))
     assert env('MAIL_ENABLED') is False
     assert env('SMTP_LOGIN') == 'bar'
