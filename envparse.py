@@ -19,6 +19,7 @@
 # IN THE SOFTWARE.
 
 import os
+import types
 import unittest
 
 
@@ -46,10 +47,12 @@ def env(var, cast=None, default=NOTSET):
         value = value.lstrip('$')
         value = env(value, cast=cast, default=default)
 
-    if cast is bool:
-        value = int(value) != 0
-    elif cast:
-        value = cast(value)
+    # Don't cast if we're returning a default value
+    if value != default:
+        if cast is bool:
+            value = int(value) != 0
+        elif cast:
+            value = cast(value)
 
     return value
 
@@ -117,6 +120,10 @@ class EnvTests(unittest.TestCase):
 
     def test_int(self):
         self.assertTypeAndValue(int, 42, env('INT_VAR', cast=int))
+
+    def test_int_with_none_default(self):
+        self.assertTypeAndValue(types.NoneType, None,
+                                env('NOT_PRESENT_VAR', cast=int, default=None))
 
     def test_float(self):
         self.assertTypeAndValue(float, 33.3, env('FLOAT_VAR', cast=float))
