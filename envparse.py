@@ -70,7 +70,10 @@ class Env(object):
     def __call__(self, var, cast=None, default=NOTSET):
         if var in self.schema:
             var_info = self.schema[var]
-            if hasattr(var_info, '__len__'):
+            if callable(var_info):
+                if not cast:
+                    cast = var_info
+            else:
                 if not cast:
                     cast = var_info[0]
 
@@ -79,9 +82,6 @@ class Env(object):
                         default = var_info[1]
                     except IndexError:
                         pass
-            else:
-                if not cast:
-                    cast = var_info
 
         return env(var, cast=cast, default=default)
 
@@ -135,10 +135,13 @@ class EnvTests(unittest.TestCase):
         self.assertTypeAndValue(str, 'bar', env('PROXIED_VAR'))
 
     def test_schema(self):
-        env = Env(INT_VAR=int, NOT_PRESENT_VAR=(float, 33.3))
+        env = Env(INT_VAR=int, NOT_PRESENT_VAR=(float, 33.3), STR_VAR=str)
 
         self.assertTypeAndValue(int, 42, env('INT_VAR'))
         self.assertTypeAndValue(float, 33.3, env('NOT_PRESENT_VAR'))
+
+        self.assertTypeAndValue(str, 'bar', env('STR_VAR'))
+        self.assertTypeAndValue(str, 'foo', env('NOT_PRESENT2', default='foo'))
 
         # Override schema in this one case
         self.assertTypeAndValue(str, '42', env('INT_VAR', cast=str))
