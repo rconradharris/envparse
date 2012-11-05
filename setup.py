@@ -3,12 +3,12 @@ from setuptools import setup
 
 setup(
     name='envparse',
-    version='0.1.2',
+    version='0.1.3',
     url='https://github.com/rconradharris/envparse',
     license='MIT',
     author='Rick Harris',
     author_email='rconradharris@gmail.com',
-    description='Environment Variable Parsing for Something Something',
+    description='Simple Environment Variable Parsing',
     long_description=__doc__,
     py_modules=['envparse'],
     zip_safe=False,

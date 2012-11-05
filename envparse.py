@@ -51,6 +51,8 @@ def env(var, cast=None, default=NOTSET):
     if value != default:
         if cast is bool:
             value = int(value) != 0
+        elif isinstance(cast, list):
+            value = map(cast[0], [x for x in value.split(',') if x])
         elif cast:
             value = cast(value)
 
@@ -73,10 +75,13 @@ class Env(object):
     def __call__(self, var, cast=None, default=NOTSET):
         if var in self.schema:
             var_info = self.schema[var]
-            if callable(var_info):
-                if not cast:
-                    cast = var_info
-            else:
+
+            try:
+                has_default = len(var_info) == 2
+            except TypeError:
+                has_default = False
+
+            if has_default:
                 if not cast:
                     cast = var_info[0]
 
@@ -85,6 +90,9 @@ class Env(object):
                         default = var_info[1]
                     except IndexError:
                         pass
+            else:
+                if not cast:
+                    cast = var_info
 
         return env(var, cast=cast, default=default)
 
@@ -97,7 +105,10 @@ class EnvTests(unittest.TestCase):
                             UNICODE_VAR='ubar',
                             BOOL_TRUE_VAR='1',
                             BOOL_FALSE_VAR='0',
-                            PROXIED_VAR='$STR_VAR')
+                            PROXIED_VAR='$STR_VAR',
+                            INT_LIST='42,33',
+                            STR_LIST_WITH_SPACES=' foo,  bar',
+                            EMPTY_LIST='')
         self._orig_environ = os.environ
         os.environ = self.environ
 
@@ -141,14 +152,28 @@ class EnvTests(unittest.TestCase):
     def test_proxied_value(self):
         self.assertTypeAndValue(str, 'bar', env('PROXIED_VAR'))
 
+    def test_int_list(self):
+        self.assertTypeAndValue(list, [42, 33], env('INT_LIST', cast=[int]))
+
+    def test_str_list_with_spaces(self):
+        self.assertTypeAndValue(list, [' foo', '  bar'],
+                                env('STR_LIST_WITH_SPACES', cast=[str]))
+
+    def test_empty_list(self):
+        self.assertTypeAndValue(list, [], env('EMPTY_LIST', cast=[int]))
+
     def test_schema(self):
-        env = Env(INT_VAR=int, NOT_PRESENT_VAR=(float, 33.3), STR_VAR=str)
+        env = Env(INT_VAR=int, NOT_PRESENT_VAR=(float, 33.3), STR_VAR=str,
+                  INT_LIST=[int], DEFAULT_LIST=([int], [2]))
 
         self.assertTypeAndValue(int, 42, env('INT_VAR'))
         self.assertTypeAndValue(float, 33.3, env('NOT_PRESENT_VAR'))
 
         self.assertTypeAndValue(str, 'bar', env('STR_VAR'))
         self.assertTypeAndValue(str, 'foo', env('NOT_PRESENT2', default='foo'))
+
+        self.assertTypeAndValue(list, [42, 33], env('INT_LIST'))
+        self.assertTypeAndValue(list, [2], env('DEFAULT_LIST'))
 
         # Override schema in this one case
         self.assertTypeAndValue(str, '42', env('INT_VAR', cast=str))
