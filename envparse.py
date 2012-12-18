@@ -34,11 +34,11 @@ def env(var, cast=None, default=NOTSET):
 
     :returns: Value from environment or default (if set)
     """
-    try:
-        value = os.environ[var]
-    except KeyError:
+    value = os.getenv(var)
+
+    if value is None:
         if default is NOTSET:
-            raise
+            raise KeyError
 
         value = default
 
