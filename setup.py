@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='envparse',
-    version='0.1.5',
+    version='0.1.6',
     url='https://github.com/rconradharris/envparse',
     license='MIT',
     author='Rick Harris',

@@ -28,19 +28,23 @@ code and instead provide a single, easy-to-use wrapper that handles:
 * Proxying values, useful in Heroku for wiring up the environment
   variables they provide to the ones that your app actually uses::
 
-    MAILGUN_SMTP_LOGIN=foo # Heroku provides this with addon
-    SMTP_LOGIN=$MAILGUN_SMTP_LOGIN # App uses proxied variable
+    MAILGUN_SMTP_LOGIN=foo          # Heroku provides this with add-on
+    SMTP_LOGIN={MAILGUN_SMTP_LOGIN} # App uses proxied variable
 
     smtp_login = env('SMTP_LOGIN')
     assert smtp_login == 'foo'
 
-* Schema-tized lookups: define the cast and default parameters once and use
-  multiple places::
+Now if you switch to using Mandrill as an email provider, instead of having to
+modify your app, you can simply make a configuration change::
+
+    SMTP_LOGIN={MANDRILL_UESRNAME}
+
+* Define a schema so you can only need to provide the type and defaults once::
 
     MAIL_ENABLED=0
     SMTP_LOGIN=bar
 
-    # Bind schema to Env object to get a schema-based lookup
+    # Bind schema to Env object to get schema-based lookups
     env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=(str, 'foo'))
     assert env('MAIL_ENABLED') is False
     assert env('SMTP_LOGIN') == 'bar'

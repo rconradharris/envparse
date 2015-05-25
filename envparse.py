@@ -21,6 +21,7 @@
 import os
 import types
 import unittest
+import warnings
 
 
 NOTSET = object()
@@ -43,9 +44,18 @@ def env(var, cast=None, default=NOTSET):
         value = default
 
     # Resolve any proxied values
-    if hasattr(value, 'startswith') and value.startswith('$'):
-        value = value.lstrip('$')
-        value = env(value, cast=cast, default=default)
+    if hasattr(value, 'startswith'):
+        if value.startswith('$'):
+            warnings.warn("$foo style proxied values will be removed in 1.0",
+                          DeprecationWarning, stacklevel=2)
+            # Old-style: For backwards compat. Won't work if passed through
+            # the shell without escaping
+            value = value.lstrip('$')
+            value = env(value, cast=cast, default=default)
+        if value.startswith('{') and value.endswith('}'):
+            # New-style: Always works
+            value = value.lstrip('{').rstrip('}')
+            value = env(value, cast=cast, default=default)
 
     # Don't cast if we're returning a default value
     if value != default:
@@ -105,7 +115,8 @@ class EnvTests(unittest.TestCase):
                             UNICODE_VAR='ubar',
                             BOOL_TRUE_VAR='1',
                             BOOL_FALSE_VAR='0',
-                            PROXIED_VAR='$STR_VAR',
+                            OLD_STYLE_PROXIED_VAR='$STR_VAR',
+                            NEW_STYLE_PROXIED_VAR='{STR_VAR}',
                             INT_LIST='42,33',
                             STR_LIST_WITH_SPACES=' foo,  bar',
                             EMPTY_LIST='')
@@ -149,8 +160,11 @@ class EnvTests(unittest.TestCase):
     def test_bool_false(self):
         self.assertTypeAndValue(bool, False, env('BOOL_FALSE_VAR', cast=bool))
 
-    def test_proxied_value(self):
-        self.assertTypeAndValue(str, 'bar', env('PROXIED_VAR'))
+    def test_old_style_proxied_value(self):
+        self.assertTypeAndValue(str, 'bar', env('OLD_STYLE_PROXIED_VAR'))
+
+    def test_new_style_proxied_value(self):
+        self.assertTypeAndValue(str, 'bar', env('NEW_STYLE_PROXIED_VAR'))
 
     def test_int_list(self):
         self.assertTypeAndValue(list, [42, 33], env('INT_LIST', cast=[int]))
