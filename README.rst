@@ -1,6 +1,6 @@
-========
 envparse
 ========
+``envparse`` is a simple utility to help parsing environment variables.
 
 If you use Heroku and/or subscribe to the tenets of the
 `12 Factor App <http://www.12factor.net/>`_
@@ -10,26 +10,74 @@ yourself duplicating quite a bit of code around handling raw environment
 variables.
 
 ``envparse`` aims to eliminate this duplicated, often inconsistent parsing
-code and instead provide a single, easy-to-use wrapper that handles:
+code and instead provide a single, easy-to-use wrapper.
 
-* Casting environment variables to a type::
+Ideas, and code portions, have been taken from `django-environ
+<https://github.com/joke2k/django-environ>`_ project but made framework
+agnostic.
 
-    MAIL_ENABLED=1
 
-    mail_enabled = env('MAIL_ENABLED', cast=bool)
-    if mail_enabled:
-        send_mail(...)
+Installing
+----------
+Through PyPI::
 
-* Specifying defaults::
+    $ pip install envparse
 
-    max_rows = env('MAX_ROWS', cast=int, default=100)
-    rows = query(limit=max_rows)
+Manually::
 
-* Proxying values, useful in Heroku for wiring up the environment
-  variables they provide to the ones that your app actually uses::
+    $ git clone https://github.com/rconradharris/envparse && cd envparse
+    $ python setup.py install
 
-    MAILGUN_SMTP_LOGIN=foo          # Heroku provides this with add-on
-    SMTP_LOGIN={MAILGUN_SMTP_LOGIN} # App uses proxied variable
+
+Usage
+-----
+In your settings or configuration module, first either import the standard
+parser or one with a schema::
+
+    # Standard
+    from envparse import env
+
+    # Schema
+    from envparse import Env
+    env = Env(BOOLEAN_VAR=bool, LIST_VAR=dict(type=list, subtype=int))
+
+
+``env`` can then be called in two ways:
+
+* Type explicit: ``env('ENV_VAR_NAME', type=TYPE, ...)``
+* Type implicit (for Python builtin types only): ``env.TYPE('ENV_VAR_NAME', ...)``
+If type is not specified, explicitly or implicitly, then the default
+type is ``str``.
+
+
+Casting to a specified type::
+
+    # Environment variable: MAIL_ENABLED=1
+
+    mail_enabled = env('MAIL_ENABLED', type=bool)
+    # OR mail_enabled = env.bool('MAIL_ENABLED')
+    assert mail_enabled is True
+
+Casting nested types::
+
+    # Environment variable: FOO=1,2,3
+    foo = env('FOO'), subtype=int)
+    # OR: foo = env('FOO', type=list, subtype=int)
+    # Note that there is no way to implicitly call subtypes.
+    assert foo == [1, 2, 3]
+
+Specifying defaults::
+
+    # Environment variable MAX_ROWS has not been defined
+
+    max_rows = env.int('MAX_ROWS', default=100)
+    assert max_rows == 100
+
+Proxying values, useful in Heroku for wiring up the environment variables they
+provide to the ones that your app actually uses::
+
+    # Environment variables: MAILGUN_SMTP_LOGIN=foo,
+    # SMTP_LOGIN='$MAILGUN_SMTP_LOGIN'
 
     smtp_login = env('SMTP_LOGIN')
     assert smtp_login == 'foo'
@@ -37,19 +85,90 @@ code and instead provide a single, easy-to-use wrapper that handles:
 Now if you switch to using Mandrill as an email provider, instead of having to
 modify your app, you can simply make a configuration change::
 
-    SMTP_LOGIN={MANDRILL_UESRNAME}
+    SMTP_LOGIN='$MANDRILL_UESRNAME'
 
-* Define a schema so you can only need to provide the type and defaults once::
+There are also a few convenience methods:
 
-    MAIL_ENABLED=0
-    SMTP_LOGIN=bar
+* ``env.json``: parses JSON and returns a dict.
+* ``env.url``: parses a url and returns a ``urlparse.ParseResult`` object.
+
+
+Type specific notes:
+
+* list: the expected environment variable format is ``FOO=1,2,3`` and may
+  contain spaces between the commas as well as preceding or trailing whitespace.
+* dict: the expected environment variable format is ``FOO='key1=val1,
+  key2=val2``. Spaces are also allowed.
+* json: a regular JSON string such as ``FOO='{"foo": "bar"}'`` is expected.
+
+
+Schemas
+~~~~~~~
+Define a schema so you can only need to provide the type, subtype, and defaults
+once::
+
+    # Environment variables: MAIL_ENABLED=0, LIST_INT='1,2,3'
 
     # Bind schema to Env object to get schema-based lookups
-    env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=(str, 'foo'))
+    env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=dict(type=str, default='foo'),
+              LIST_INT=dict(type=list, subtype=int))
     assert env('MAIL_ENABLED') is False
-    assert env('SMTP_LOGIN') == 'bar'
+    assert env('SMTP_LOGIN') == 'foo' # Not defined so uses default
+    assert env('LIST_INT') == [1, 2, 3]
 
-    ...later in the code...
+The ``Env`` constructor takes values in the form of either: ``VAR_NAME=type``
+or ``VAR_NAME=dict`` where ``dict`` is a dictionary with either one or more of
+the following keys specified: ``type``, ``subtype``, ``default``.
 
-    if env('MAIL_ENABLED'):
-        send_email(...)
+
+Pre- and Postprocessors
+~~~~~~~~~~~~~~~~~~~~~~~
+Preprocessors are callables that are run on the environment variable string
+before any type casting takes place::
+
+    # Environment variables: FOO=bar
+
+    # Preprocessor to change variable to uppercase
+    to_upper = lambda v: v.upper()
+    foo = env('FOO', preprocessor=to_upper)
+    assert foo == 'BAR'
+
+Postprocessors are callables that are run after the type casting takes place.
+An example of one might be returning a datastructure expected by a framework::
+
+    # Environment variable: REDIS_URL='redis://:redispass@127.0.0.1:6379/0'
+    def django_redis(url):
+      return {'BACKEND': 'django_redis.cache.RedisCache',
+          'LOCATION': '{}:{}:{}'.format(url.hostname, url.port, url.path.strip('/')),
+          'OPTIONS': {'PASSWORD': url.password}}
+
+    redis_config = env('REDIS_URL', postprocessor=django_redis)
+    assert redis_config == {'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': '127.0.0.1:6379:0', 'OPTIONS': {'PASSWORD': 'redispass'}}
+
+
+Environment File
+~~~~~~~~~~~~~~~~
+Read from a .env file (line delimited KEY=VALUE)::
+
+    # This recurses up the directory tree until a file called '.env' is found.
+    env.read_env()
+
+    # Manually specifying a path
+    env.read_env('/config/.myenv')
+
+    # Values can be read as normal
+    env.int('FOO')
+
+
+Tests
+-----
+.. image:: https://secure.travis-ci.org/rconradharris/envparse.png?branch=master
+
+To run the tests install tox::
+
+    pip install tox
+
+Then run them with::
+
+    make test

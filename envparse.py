@@ -1,197 +1,217 @@
-# Copyright (c) 2012 Rick Harris
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to
-# deal in the Software without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-# sell copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
-
+"""
+envparse is a simple utility to help parsing environment variables.
+"""
+from __future__ import unicode_literals
+from functools import partial
+import inspect
+import json
+import logging
 import os
-import types
-import unittest
+import re
+import shlex
 import warnings
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    # Python 2
+    import urlparse
 
 
-NOTSET = object()
+__version__ = '0.2.0'
 
 
-def env(var, cast=None, default=NOTSET):
-    """Return value for given environment variable.
+logger = logging.getLogger(__file__)
 
-    :param cast: Type to cast return value as.
-    :param default: If var not present in environ, return this instead.
 
-    :returns: Value from environment or default (if set)
-    """
-    try:
-        value = os.environ[var]
-    except KeyError:
-        if default is NOTSET:
-            raise
-
-        value = default
-
-    # Resolve any proxied values
-    if hasattr(value, 'startswith'):
-        if value.startswith('$'):
-            warnings.warn("$foo style proxied values will be removed in 1.0",
-                          DeprecationWarning, stacklevel=2)
-            # Old-style: For backwards compat. Won't work if passed through
-            # the shell without escaping
-            value = value.lstrip('$')
-            value = env(value, cast=cast, default=default)
-        if value.startswith('{') and value.endswith('}'):
-            # New-style: Always works
-            value = value.lstrip('{').rstrip('}')
-            value = env(value, cast=cast, default=default)
-
-    # Don't cast if we're returning a default value
-    if value != default:
-        if cast is bool:
-            value = int(value) != 0
-        elif isinstance(cast, list):
-            value = map(cast[0], [x for x in value.split(',') if x])
-        elif cast:
-            value = cast(value)
-
-    return value
+class ConfigurationError(Exception):
+    pass
 
 
 class Env(object):
-    """Provide schema-based lookups of environment variables so that each
-    caller doesn't have to pass in `cast` and `default` parameters.
+    """
+    Lookup and cast environment variables with optional schema.
 
-    Usage:
+    Usage:::
 
+        env = Env()
+        env('foo')
+        env.bool('bar')
+
+        # Create env with a schema
         env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=(str, 'DEFAULT'))
         if env('MAIL_ENABLED'):
             ...
     """
+    # Can't rely on None since it may be desired as a return value.
+    NOTSET = type(str('NoValue'), (object,), {})
+    BOOLEAN_TRUE_STRINGS = ('true', 'on', 'ok', 'y', 'yes', '1')
+
     def __init__(self, **schema):
         self.schema = schema
 
-    def __call__(self, var, cast=None, default=NOTSET):
+    def __getattr__(self, name):
+        try:
+            return partial(self.__call__, type=__builtins__[name])
+        except KeyError:
+            raise AttributeError(
+                '{} is not a builtin type that a value can be cast to, '
+                'please call env directly with type keyword '
+                'argument'.format(name))
+
+    def __call__(self, var, default=NOTSET, type=None, subtype=None,
+                 force=False, preprocessor=None, postprocessor=None):
+        """
+        Return value for given environment variable.
+
+        :param var: Name of variable.
+        :param default: If var not present in environ, return this instead.
+        :param type: Type to cast return value as.
+        :param subtype: Subtype to cast return values as (used for nested
+                        structures).
+        :param force: force to cast to type even if default is set.
+        :param preprocessor: callable to run on pre-casted value.
+        :param postprocessor: callable to run on casted value.
+
+        :returns: Value from environment or default (if set).
+        """
+        logger.debug("Get '%s' casted as '%s'/'%s' with default '%s'", var,
+                     type, subtype, default)
+
         if var in self.schema:
-            var_info = self.schema[var]
-
-            try:
-                has_default = len(var_info) == 2
-            except TypeError:
-                has_default = False
-
-            if has_default:
-                if not cast:
-                    cast = var_info[0]
-
-                if default is NOTSET:
-                    try:
-                        default = var_info[1]
-                    except IndexError:
-                        pass
+            params = self.schema[var]
+            if isinstance(params, dict):
+                if type is None:
+                    type = params.get('type', type)
+                if subtype is None:
+                    subtype = params.get('subtype', subtype)
+                if default == self.NOTSET:
+                    default = params.get('default', default)
             else:
-                if not cast:
-                    cast = var_info
+                if type is None:
+                    type = params
+        # Default type to `str` if type is not specified. Most types will be
+        # implicitly strings so reduces having to specify type.
+        type = str if type is None else type
 
-        return env(var, cast=cast, default=default)
+        try:
+            value = os.environ[var]
+        except KeyError:
+            if default is self.NOTSET:
+                error_msg = "Environment variable '{}' not set.".format(var)
+                raise ConfigurationError(error_msg)
+            else:
+                value = default
 
+        # Resolve any proxied values
+        if hasattr(value, 'startswith') and value.startswith('$'):
+            value = self.__call__(value.lstrip('$'), default, type, subtype,
+                                  default, force, preprocessor, postprocessor)
 
-class EnvTests(unittest.TestCase):
-    def setUp(self):
-        self.environ = dict(STR_VAR='bar',
-                            INT_VAR='42',
-                            FLOAT_VAR='33.3',
-                            UNICODE_VAR='ubar',
-                            BOOL_TRUE_VAR='1',
-                            BOOL_FALSE_VAR='0',
-                            OLD_STYLE_PROXIED_VAR='$STR_VAR',
-                            NEW_STYLE_PROXIED_VAR='{STR_VAR}',
-                            INT_LIST='42,33',
-                            STR_LIST_WITH_SPACES=' foo,  bar',
-                            EMPTY_LIST='')
-        self._orig_environ = os.environ
-        os.environ = self.environ
+        if preprocessor:
+            value = preprocessor(value)
+        if value != default or force:
+            value = self.cast(value, type, subtype)
+        if postprocessor:
+            value = postprocessor(value)
+        return value
 
-    def tearDown(self):
-        os.environ = self._orig_environ
+    @classmethod
+    def cast(cls, value, type_=str, subtype=None):
+        """
+        Parse and cast provided value.
 
-    def assertTypeAndValue(self, type_, expected, actual):
-        self.assertEqual(type_, type(actual))
-        self.assertEqual(expected, actual)
+        :param value: Stringed value.
+        :param type_: Type to cast return value as.
+        :param subtype: Subtype to cast return values as (used for nested
+                        structures).
 
-    def test_not_present_with_default(self):
-        self.assertEqual(3, env('not_present', default=3))
+        :returns: Value of type `type`.
+        """
+        if type_ is bool:
+            value = value.lower() in cls.BOOLEAN_TRUE_STRINGS
+        elif type_ is float:
+            # Clean string
+            float_str = re.sub(r'[^\d,\.]', '', value)
+            # Split to handle thousand separator for different locales, i.e.
+            # comma or dot being the placeholder.
+            parts = re.split(r'[,\.]', float_str)
+            if len(parts) == 1:
+                float_str = parts[0]
+            else:
+                float_str = "{0}.{1}".format(''.join(parts[0:-1]), parts[-1])
+            value = float(float_str)
+        elif type(type_) is type and (issubclass(type_, list) or
+                                      issubclass(type_, tuple)):
+            value = (subtype(i.strip()) if subtype else i.strip() for i in
+                     value.split(',') if i)
+        elif type_ is dict:
+            value = {k.strip(): subtype(v.strip()) if subtype else v.strip()
+                     for k, v in (i.split('=') for i in value.split(',') if
+                     value)}
+        return type_(value)
 
-    def test_not_present_without_default(self):
-        with self.assertRaises(KeyError):
-            env('not_present')
+    # Convenience methods
+    def json(self, var, **kwargs):
+        """
+        :rtype: dict
+        """
+        return self(var, type=json.loads, **kwargs)
 
-    def test_str(self):
-        self.assertTypeAndValue(str, 'bar', env('STR_VAR'))
+    def url(self, var, **kwargs):
+        """
+        :rtype: urlparse.ParseResult
+        """
+        return self(var, type=urlparse.urlparse, force=True, **kwargs)
 
-    def test_int(self):
-        self.assertTypeAndValue(int, 42, env('INT_VAR', cast=int))
+    @staticmethod
+    def read_envfile(path=None, **overrides):
+        """
+        Read a .env file (line delimited KEY=VALUE) into os.environ.
 
-    def test_int_with_none_default(self):
-        self.assertTypeAndValue(types.NoneType, None,
-                                env('NOT_PRESENT_VAR', cast=int, default=None))
+        If not given a path to the file, recurses up the directory tree until
+        found.
 
-    def test_float(self):
-        self.assertTypeAndValue(float, 33.3, env('FLOAT_VAR', cast=float))
+        Uses code from Honcho (github.com/nickstenning/honcho) for parsing the
+        file.
+        """
+        if path is None:
+            frame = inspect.currentframe().f_back
+            caller_dir = os.path.dirname(frame.f_code.co_filename)
+            path = os.path.join(os.path.abspath(caller_dir), '.env')
 
-    def test_unicode(self):
-        self.assertTypeAndValue(unicode, u'ubar', env('UNICODE_VAR',
-                                cast=unicode))
+        try:
+            with open(path, 'r') as f:
+                content = f.read()
+        except getattr(__builtins__, 'FileNotFoundError', IOError):
+            logger.debug('envfile not found at %s, looking in parent dir.',
+                         path)
+            filedir, filename = os.path.split(path)
+            pardir = os.path.abspath(os.path.join(filedir, os.pardir))
+            path = os.path.join(pardir, filename)
+            if filedir != pardir:
+                Env.read_envfile(path, **overrides)
+            else:
+                # Reached top level directory.
+                warnings.warn('Could not any envfile.')
+            return
 
-    def test_bool_true(self):
-        self.assertTypeAndValue(bool, True, env('BOOL_TRUE_VAR', cast=bool))
+        logger.debug('Reading environment variables from: %s', path)
+        for line in content.splitlines():
+            tokens = list(shlex.shlex(line, posix=True))
+            # parses the assignment statement
+            if len(tokens) < 3:
+                continue
+            name, op = tokens[:2]
+            value = ''.join(tokens[2:])
+            if op != '=':
+                continue
+            if not re.match(r'[A-Za-z_][A-Za-z_0-9]*', name):
+                continue
+            value = value.replace(r'\n', '\n').replace(r'\t', '\t')
+            os.environ.setdefault(name, value)
 
-    def test_bool_false(self):
-        self.assertTypeAndValue(bool, False, env('BOOL_FALSE_VAR', cast=bool))
+        for name, value in overrides.items():
+            os.environ.setdefault(name, value)
 
-    def test_old_style_proxied_value(self):
-        self.assertTypeAndValue(str, 'bar', env('OLD_STYLE_PROXIED_VAR'))
-
-    def test_new_style_proxied_value(self):
-        self.assertTypeAndValue(str, 'bar', env('NEW_STYLE_PROXIED_VAR'))
-
-    def test_int_list(self):
-        self.assertTypeAndValue(list, [42, 33], env('INT_LIST', cast=[int]))
-
-    def test_str_list_with_spaces(self):
-        self.assertTypeAndValue(list, [' foo', '  bar'],
-                                env('STR_LIST_WITH_SPACES', cast=[str]))
-
-    def test_empty_list(self):
-        self.assertTypeAndValue(list, [], env('EMPTY_LIST', cast=[int]))
-
-    def test_schema(self):
-        env = Env(INT_VAR=int, NOT_PRESENT_VAR=(float, 33.3), STR_VAR=str,
-                  INT_LIST=[int], DEFAULT_LIST=([int], [2]))
-
-        self.assertTypeAndValue(int, 42, env('INT_VAR'))
-        self.assertTypeAndValue(float, 33.3, env('NOT_PRESENT_VAR'))
-
-        self.assertTypeAndValue(str, 'bar', env('STR_VAR'))
-        self.assertTypeAndValue(str, 'foo', env('NOT_PRESENT2', default='foo'))
-
-        self.assertTypeAndValue(list, [42, 33], env('INT_LIST'))
-        self.assertTypeAndValue(list, [2], env('DEFAULT_LIST'))
-
-        # Override schema in this one case
-        self.assertTypeAndValue(str, '42', env('INT_VAR', cast=str))
-
-
-if __name__ == "__main__":
-    unittest.main()
+# Convenience object if no schema is required.
+env = Env()

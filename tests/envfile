@@ -1,0 +1,15 @@
+BLANK=''
+STR=foo
+INT=42
+FLOAT=33.3
+BOOL_TRUE=1
+BOOL_FALSE=0
+PROXIED=$STR
+LIST_STR='foo,bar'
+LIST_STR_WITH_SPACES=' foo,  bar'
+LIST_INT=1,2,3
+LIST_INT_WITH_SPACES=1,  2,3
+DICT_STR=key1=val1, key2=val2
+DICT_INT=key1=1, key2=2
+JSON='{"foo": "bar", "baz": [1, 2, 3]}'
+URL=https://example.com/path?query=1
