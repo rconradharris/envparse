@@ -56,7 +56,6 @@ setup(
     py_modules=['envparse'],
     platforms='any',
     zip_safe=False,
-    package_data={'sandman': ['templates/**', 'static/*/*']},
     classifiers = [
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',

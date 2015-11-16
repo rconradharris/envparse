@@ -11,7 +11,7 @@ env_vars = dict(
     FLOAT='33.3',
     BOOL_TRUE='1',
     BOOL_FALSE='0',
-    PROXIED='$STR',
+    PROXIED='{{STR}}',
     LIST_STR='foo,bar',
     LIST_STR_WITH_SPACES=' foo,  bar',
     LIST_INT='1,2,3',
@@ -34,8 +34,8 @@ def environ(monkeypatch, request):
 
 
 # Helper function
-def assert_type_value(type_, expected, result):
-    assert type_ == type(result)
+def assert_type_value(cast, expected, result):
+    assert cast == type(result)
     assert expected == result
 
 
@@ -66,7 +66,7 @@ def test_str():
 
 def test_int():
     expected = int(env_vars['INT'])
-    assert_type_value(int, expected, env('INT', type=int))
+    assert_type_value(int, expected, env('INT', cast=int))
     assert_type_value(int, expected, env.int('INT'))
 
 
@@ -82,26 +82,26 @@ def test_bool():
 
 def test_list():
     list_str = ['foo', 'bar']
-    assert_type_value(list, list_str, env('LIST_STR', type=list))
+    assert_type_value(list, list_str, env('LIST_STR', cast=list))
     assert_type_value(list, list_str, env.list('LIST_STR'))
     assert_type_value(list, list_str, env.list('LIST_STR_WITH_SPACES'))
     list_int = [1, 2, 3]
-    assert_type_value(list, list_int, env('LIST_INT', type=list,
-                      subtype=int))
-    assert_type_value(list, list_int, env.list('LIST_INT', subtype=int))
+    assert_type_value(list, list_int, env('LIST_INT', cast=list,
+                      subcast=int))
+    assert_type_value(list, list_int, env.list('LIST_INT', subcast=int))
     assert_type_value(list, list_int, env.list('LIST_INT_WITH_SPACES',
-                      subtype=int))
-    assert_type_value(list, [], env.list('BLANK', subtype=int))
+                      subcast=int))
+    assert_type_value(list, [], env.list('BLANK', subcast=int))
 
 
 def test_dict():
     dict_str = dict(key1='val1', key2='val2')
     assert_type_value(dict, dict_str, env.dict('DICT_STR'))
-    assert_type_value(dict, dict_str, env('DICT_STR', type=dict))
+    assert_type_value(dict, dict_str, env('DICT_STR', cast=dict))
     dict_int = dict(key1=1, key2=2)
-    assert_type_value(dict, dict_int, env('DICT_INT', type=dict,
-                      subtype=int))
-    assert_type_value(dict, dict_int, env.dict('DICT_INT', subtype=int))
+    assert_type_value(dict, dict_int, env('DICT_INT', cast=dict,
+                      subcast=int))
+    assert_type_value(dict, dict_int, env.dict('DICT_INT', subcast=int))
     assert_type_value(dict, {}, env.dict('BLANK'))
 
 
@@ -146,14 +146,14 @@ def test_postprocessor(monkeypatch):
 
 
 def test_schema():
-    env = Env(STR=str, STR_DEFAULT=dict(type=str, default='default'),
-              INT=int, LIST_STR=list, LIST_INT=dict(type=list, subtype=int))
+    env = Env(STR=str, STR_DEFAULT=dict(cast=str, default='default'),
+              INT=int, LIST_STR=list, LIST_INT=dict(cast=list, subcast=int))
     assert_type_value(str, 'foo', env('STR'))
     assert_type_value(str, 'default', env('STR_DEFAULT'))
     assert_type_value(int, 42, env('INT'))
     assert_type_value(list, ['foo', 'bar'], env('LIST_STR'))
     assert_type_value(list, [1, 2, 3], env('LIST_INT'))
     # Overrides
-    assert_type_value(str, '42', env('INT', type=str))
+    assert_type_value(str, '42', env('INT', cast=str))
     assert_type_value(str, 'manual_default', env('STR_DEFAULT',
                       default='manual_default'))

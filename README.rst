@@ -1,6 +1,6 @@
 envparse
 ========
-``envparse`` is a simple utility to help parsing environment variables.
+``envparse`` is a simple utility to parse environment variables.
 
 If you use Heroku and/or subscribe to the tenets of the
 `12 Factor App <http://www.12factor.net/>`_
@@ -25,6 +25,8 @@ Through PyPI::
 
 Manually::
 
+    $ pip install git+https://github.com/rconradharris/envparse.git
+    OR
     $ git clone https://github.com/rconradharris/envparse && cd envparse
     $ python setup.py install
 
@@ -77,7 +79,7 @@ Proxying values, useful in Heroku for wiring up the environment variables they
 provide to the ones that your app actually uses::
 
     # Environment variables: MAILGUN_SMTP_LOGIN=foo,
-    # SMTP_LOGIN='$MAILGUN_SMTP_LOGIN'
+    # SMTP_LOGIN='{{MAILGUN_SMTP_LOGIN}}'
 
     smtp_login = env('SMTP_LOGIN')
     assert smtp_login == 'foo'
@@ -85,7 +87,7 @@ provide to the ones that your app actually uses::
 Now if you switch to using Mandrill as an email provider, instead of having to
 modify your app, you can simply make a configuration change::
 
-    SMTP_LOGIN='$MANDRILL_UESRNAME'
+    SMTP_LOGIN='{{MANDRILL_UESRNAME}}'
 
 There are also a few convenience methods:
 
