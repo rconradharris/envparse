@@ -1,4 +1,0 @@
-0.1.6
-    - Use curly-braces for proxied values since shells will attempt to resolve
-      dollar-sign values themselves. Dollar-sign style is still supported, but
-      deprecated and will be removed in a 1.0 release.
