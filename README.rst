@@ -34,7 +34,9 @@ Manually::
 Usage
 -----
 In your settings or configuration module, first either import the standard
-parser or one with a schema::
+parser or one with a schema:
+
+.. code-block:: python
 
     # Standard
     from envparse import env
@@ -48,11 +50,13 @@ parser or one with a schema::
 
 * Type explicit: ``env('ENV_VAR_NAME', type=TYPE, ...)``
 * Type implicit (for Python builtin types only): ``env.TYPE('ENV_VAR_NAME', ...)``
-If type is not specified, explicitly or implicitly, then the default
-type is ``str``.
+  If type is not specified, explicitly or implicitly, then the default
+  type is ``str``.
 
 
-Casting to a specified type::
+Casting to a specified type:
+
+.. code-block:: python
 
     # Environment variable: MAIL_ENABLED=1
 
@@ -60,7 +64,9 @@ Casting to a specified type::
     # OR mail_enabled = env.bool('MAIL_ENABLED')
     assert mail_enabled is True
 
-Casting nested types::
+Casting nested types:
+
+.. code-block:: python
 
     # Environment variable: FOO=1,2,3
     foo = env('FOO'), subtype=int)
@@ -68,7 +74,9 @@ Casting nested types::
     # Note that there is no way to implicitly call subtypes.
     assert foo == [1, 2, 3]
 
-Specifying defaults::
+Specifying defaults:
+
+.. code-block:: python
 
     # Environment variable MAX_ROWS has not been defined
 
@@ -76,7 +84,9 @@ Specifying defaults::
     assert max_rows == 100
 
 Proxying values, useful in Heroku for wiring up the environment variables they
-provide to the ones that your app actually uses::
+provide to the ones that your app actually uses:
+
+.. code-block:: python
 
     # Environment variables: MAILGUN_SMTP_LOGIN=foo,
     # SMTP_LOGIN='{{MAILGUN_SMTP_LOGIN}}'
@@ -85,7 +95,9 @@ provide to the ones that your app actually uses::
     assert smtp_login == 'foo'
 
 Now if you switch to using Mandrill as an email provider, instead of having to
-modify your app, you can simply make a configuration change::
+modify your app, you can simply make a configuration change:
+
+.. code-block:: bash
 
     SMTP_LOGIN='{{MANDRILL_UESRNAME}}'
 
@@ -107,7 +119,9 @@ Type specific notes:
 Schemas
 ~~~~~~~
 Define a schema so you can only need to provide the type, subtype, and defaults
-once::
+once:
+
+.. code-block:: python
 
     # Environment variables: MAIL_ENABLED=0, LIST_INT='1,2,3'
 
@@ -126,7 +140,9 @@ the following keys specified: ``type``, ``subtype``, ``default``.
 Pre- and Postprocessors
 ~~~~~~~~~~~~~~~~~~~~~~~
 Preprocessors are callables that are run on the environment variable string
-before any type casting takes place::
+before any type casting takes place:
+
+.. code-block:: python
 
     # Environment variables: FOO=bar
 
@@ -136,7 +152,9 @@ before any type casting takes place::
     assert foo == 'BAR'
 
 Postprocessors are callables that are run after the type casting takes place.
-An example of one might be returning a datastructure expected by a framework::
+An example of one might be returning a datastructure expected by a framework:
+
+.. code-block:: python
 
     # Environment variable: REDIS_URL='redis://:redispass@127.0.0.1:6379/0'
     def django_redis(url):
@@ -151,7 +169,9 @@ An example of one might be returning a datastructure expected by a framework::
 
 Environment File
 ~~~~~~~~~~~~~~~~
-Read from a .env file (line delimited KEY=VALUE)::
+Read from a .env file (line delimited KEY=VALUE):
+
+.. code-block:: python
 
     # This recurses up the directory tree until a file called '.env' is found.
     env.read_envfile()
