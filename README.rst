@@ -154,10 +154,10 @@ Environment File
 Read from a .env file (line delimited KEY=VALUE)::
 
     # This recurses up the directory tree until a file called '.env' is found.
-    env.read_env()
+    env.read_envfile()
 
     # Manually specifying a path
-    env.read_env('/config/.myenv')
+    env.read_envfile('/config/.myenv')
 
     # Values can be read as normal
     env.int('FOO')
