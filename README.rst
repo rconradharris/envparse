@@ -43,12 +43,12 @@ parser or one with a schema:
 
     # Schema
     from envparse import Env
-    env = Env(BOOLEAN_VAR=bool, LIST_VAR=dict(type=list, subtype=int))
+    env = Env(BOOLEAN_VAR=bool, LIST_VAR=dict(cast=list, subcast=int))
 
 
 ``env`` can then be called in two ways:
 
-* Type explicit: ``env('ENV_VAR_NAME', type=TYPE, ...)``
+* Type explicit: ``env('ENV_VAR_NAME', cast=TYPE, ...)``
 * Type implicit (for Python builtin types only): ``env.TYPE('ENV_VAR_NAME', ...)``
   If type is not specified, explicitly or implicitly, then the default
   type is ``str``.
@@ -60,7 +60,7 @@ Casting to a specified type:
 
     # Environment variable: MAIL_ENABLED=1
 
-    mail_enabled = env('MAIL_ENABLED', type=bool)
+    mail_enabled = env('MAIL_ENABLED', cast=bool)
     # OR mail_enabled = env.bool('MAIL_ENABLED')
     assert mail_enabled is True
 
@@ -69,9 +69,9 @@ Casting nested types:
 .. code-block:: python
 
     # Environment variable: FOO=1,2,3
-    foo = env('FOO', subtype=int)
-    # OR: foo = env('FOO', type=list, subtype=int)
-    # Note that there is no way to implicitly call subtypes.
+    foo = env('FOO'), subcast=int)
+    # OR: foo = env('FOO', cast=list, subcast=int)
+    # Note that there is no way to implicitly call subcast.
     assert foo == [1, 2, 3]
 
 Specifying defaults:
@@ -118,7 +118,7 @@ Type specific notes:
 
 Schemas
 ~~~~~~~
-Define a schema so you can only need to provide the type, subtype, and defaults
+Define a schema so you can only need to provide the cast, subcast, and defaults
 once:
 
 .. code-block:: python
@@ -126,15 +126,15 @@ once:
     # Environment variables: MAIL_ENABLED=0, LIST_INT='1,2,3'
 
     # Bind schema to Env object to get schema-based lookups
-    env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=dict(type=str, default='foo'),
-              LIST_INT=dict(type=list, subtype=int))
+    env = Env(MAIL_ENABLED=bool, SMTP_LOGIN=dict(cast=str, default='foo'),
+              LIST_INT=dict(cast=list, subcast=int))
     assert env('MAIL_ENABLED') is False
     assert env('SMTP_LOGIN') == 'foo' # Not defined so uses default
     assert env('LIST_INT') == [1, 2, 3]
 
 The ``Env`` constructor takes values in the form of either: ``VAR_NAME=type``
 or ``VAR_NAME=dict`` where ``dict`` is a dictionary with either one or more of
-the following keys specified: ``type``, ``subtype``, ``default``.
+the following keys specified: ``cast``, ``subcast``, ``default``.
 
 
 Pre- and Postprocessors
