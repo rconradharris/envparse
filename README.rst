@@ -69,7 +69,7 @@ Casting nested types:
 .. code-block:: python
 
     # Environment variable: FOO=1,2,3
-    foo = env('FOO'), subtype=int)
+    foo = env('FOO', subtype=int)
     # OR: foo = env('FOO', type=list, subtype=int)
     # Note that there is no way to implicitly call subtypes.
     assert foo == [1, 2, 3]
