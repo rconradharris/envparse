@@ -114,22 +114,6 @@ class Env(object):
         return value
 
     @classmethod
-    def track_path(cls, path="", tracking_table={}):
-        """
-        Maintain a filename-keyed table of path lookups.
-
-        :param path: the full path of the target file
-        :param tracking_table: the table that we'll be maintaining to show the paths used to try to find the path param
-        :returns: A dictionary keyed on file paths with list values of those paths
-        """
-
-        # use the filename in a table to track paths
-        if path:
-            filedir, filename = os.path.split(path)
-            tracking_table.setdefault(filename, []).append(path)
-        return tracking_table
-
-    @classmethod
     def cast(cls, value, cast=str, subcast=None):
         """
         Parse and cast provided value.
@@ -180,7 +164,7 @@ class Env(object):
     url = shortcut(urlparse.urlparse)
 
     @staticmethod
-    def read_envfile(path=None, **overrides):
+    def read_envfile(path=None, traversed_paths=[], **overrides):
         """
         Read a .env file (line delimited KEY=VALUE) into os.environ.
 
@@ -199,8 +183,8 @@ class Env(object):
             with open(path, 'r') as f:
                 content = f.read()
         except getattr(__builtins__, 'FileNotFoundError', IOError):
-            # Append the path we tried (and failed) to find to a tracking table
-            traversed_paths = Env.track_path(path)
+            # Append the path we tried (and failed) to load to a tracking list
+            traversed_paths.append(path)
             logger.debug('envfile not found at %s, looking in parent dir.',
                          path)
             filedir, filename = os.path.split(path)
@@ -210,7 +194,7 @@ class Env(object):
                 Env.read_envfile(path, **overrides)
             else:
                 # Reached top level directory.
-                output_paths = " ".join(traversed_paths[filename])
+                output_paths = " ".join(traversed_paths)
                 warnings.warn('Could not load any envfile via path(s): %s' % output_paths)
             return
 
