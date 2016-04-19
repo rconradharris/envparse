@@ -164,7 +164,7 @@ class Env(object):
     url = shortcut(urlparse.urlparse)
 
     @staticmethod
-    def read_envfile(path=None, **overrides):
+    def read_envfile(path=None, traversed_paths=[], **overrides):
         """
         Read a .env file (line delimited KEY=VALUE) into os.environ.
 
@@ -183,6 +183,8 @@ class Env(object):
             with open(path, 'r') as f:
                 content = f.read()
         except getattr(__builtins__, 'FileNotFoundError', IOError):
+            # Append the path we tried (and failed) to load to a tracking list
+            traversed_paths.append(path)
             logger.debug('envfile not found at %s, looking in parent dir.',
                          path)
             filedir, filename = os.path.split(path)
@@ -192,7 +194,8 @@ class Env(object):
                 Env.read_envfile(path, **overrides)
             else:
                 # Reached top level directory.
-                warnings.warn('Could not any envfile.')
+                output_paths = " ".join(traversed_paths)
+                warnings.warn('Could not load any envfile via path(s): %s' % output_paths)
             return
 
         logger.debug('Reading environment variables from: %s', path)
