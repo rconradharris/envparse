@@ -116,6 +116,33 @@ Type specific notes:
 * json: a regular JSON string such as ``FOO='{"foo": "bar"}'`` is expected.
 
 
+Environment Sources
+~~~~~~~~~~~~~~~~~~~
+By default, ``env`` uses ``os.environ`` as data source. Optionally, it can be
+re-populated with either a flat dict or a .env file.
+
+Read from dict:
+
+.. code-block:: python
+
+    vars = {'FOO': 42, 'BAR': 'baz'}
+    dict_env = env.from_env(vars)
+    dict_env.int('FOO')
+
+Read from a .env file (line delimited KEY=VALUE):
+
+.. code-block:: python
+
+    # This recurses up the directory tree until a file called '.env' is found.
+    file_env = env.from_envfile()
+
+    # Manually specifying a path
+    file_env = env.read_envfile('/config/.myenv')
+
+    # Values can be read as normal
+    file_env.int('FOO')
+
+
 Schemas
 ~~~~~~~
 Define a schema so you can only need to provide the cast, subcast, and defaults
@@ -165,22 +192,6 @@ An example of one might be returning a datastructure expected by a framework:
     redis_config = env('REDIS_URL', postprocessor=django_redis)
     assert redis_config == {'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': '127.0.0.1:6379:0', 'OPTIONS': {'PASSWORD': 'redispass'}}
-
-
-Environment File
-~~~~~~~~~~~~~~~~
-Read from a .env file (line delimited KEY=VALUE):
-
-.. code-block:: python
-
-    # This recurses up the directory tree until a file called '.env' is found.
-    env.read_envfile()
-
-    # Manually specifying a path
-    env.read_envfile('/config/.myenv')
-
-    # Values can be read as normal
-    env.int('FOO')
 
 
 Tests

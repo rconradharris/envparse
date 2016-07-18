@@ -13,3 +13,4 @@ DICT_STR=key1=val1, key2=val2
 DICT_INT=key1=1, key2=2
 JSON='{"foo": "bar", "baz": [1, 2, 3]}'
 URL=https://example.com/path?query=1
+REDIS_URL=redis://:redispass@127.0.0.1:6379/0

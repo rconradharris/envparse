@@ -55,6 +55,7 @@ class Env(object):
 
     def __init__(self, **schema):
         self.schema = schema
+        self.env = os.environ
 
     def __call__(self, var, default=NOTSET, cast=None, subcast=None,
                  force=False, preprocessor=None, postprocessor=None):
@@ -92,7 +93,7 @@ class Env(object):
         cast = str if cast is None else cast
 
         try:
-            value = os.environ[var]
+            value = self.env[var]
         except KeyError:
             if default is NOTSET:
                 error_msg = "Environment variable '{}' not set.".format(var)
@@ -163,10 +164,17 @@ class Env(object):
     json = shortcut(pyjson.loads)
     url = shortcut(urlparse.urlparse)
 
-    @staticmethod
-    def read_envfile(path=None, **overrides):
+    def from_env(self, env):
         """
-        Read a .env file (line delimited KEY=VALUE) into os.environ.
+        Load environment from the provided dict.
+        :param env: A dict to use as the environment.
+        """
+        self.env = env
+        return self
+
+    def from_envfile(self, path=None, **overrides):
+        """
+        Load environment from a .env file (line delimited KEY=VALUE).
 
         If not given a path to the file, recurses up the directory tree until
         found.
@@ -196,6 +204,7 @@ class Env(object):
             return
 
         logger.debug('Reading environment variables from: %s', path)
+        self.env = {}
         for line in content.splitlines():
             tokens = list(shlex.shlex(line, posix=True))
             # parses the assignment statement
@@ -208,10 +217,12 @@ class Env(object):
             if not re.match(r'[A-Za-z_][A-Za-z_0-9]*', name):
                 continue
             value = value.replace(r'\n', '\n').replace(r'\t', '\t')
-            os.environ.setdefault(name, value)
+            self.env.setdefault(name, value)
 
         for name, value in overrides.items():
-            os.environ.setdefault(name, value)
+            self.env.setdefault(name, value)
+
+        return self
 
 # Convenience object if no schema is required.
 env = Env()
