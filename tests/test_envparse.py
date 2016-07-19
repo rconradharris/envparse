@@ -133,8 +133,8 @@ def test_url(env):
     assert_type_value(url.__class__, url, env.url('URL'))
 
 
-def proxied_value(env):
-    assert_type_value(str, 'bar', env('PROXIED'))
+def test_proxied_value(env):
+    assert_type_value(str, 'foo', env('PROXIED'))
 
 
 def test_preprocessor(env):

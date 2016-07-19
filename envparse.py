@@ -15,6 +15,10 @@ except ImportError:
     # Python 2
     import urlparse
 
+try:
+    basestring
+except NameError:
+    basestring = str
 
 __version__ = '0.2.0'
 
@@ -102,10 +106,9 @@ class Env(object):
                 value = default
 
         # Resolve any proxied values
-        if hasattr(value, 'startswith') and value.startswith('{{'):
-            value = self.__call__(value.lstrip('{{}}'), default, cast, subcast,
-                                  default, force, preprocessor, postprocessor)
-
+        if isinstance(value, basestring) and re.match(r"\{\{.+\}\}", value):
+            value = self.__call__(value.strip('{}'), default, cast, subcast,
+                                  force, preprocessor, postprocessor)
         if preprocessor:
             value = preprocessor(value)
         if value != default or force:
