@@ -59,7 +59,7 @@ class Env(object):
 
     def __init__(self, **schema):
         self.schema = schema
-        self.env = os.environ
+        self._replace_env(os.environ)
 
     def __call__(self, var, default=NOTSET, cast=None, subcast=None,
                  force=False, preprocessor=None, postprocessor=None):
@@ -116,6 +116,9 @@ class Env(object):
         if postprocessor:
             value = postprocessor(value)
         return value
+
+    def _replace_env(self, new_env):
+        self.env = new_env
 
     def all(self):
         """
@@ -180,7 +183,7 @@ class Env(object):
         Load environment from the provided dict.
         :param env: A dict to use as the environment.
         """
-        self.env = env
+        self._replace_env(env)
         return self
 
     def from_envfile(self, path=None, **overrides):
@@ -215,7 +218,7 @@ class Env(object):
             return
 
         logger.debug('Reading environment variables from: %s', path)
-        self.env = {}
+        new_env = {}
         for line in content.splitlines():
             tokens = list(shlex.shlex(line, posix=True))
             # parses the assignment statement
@@ -228,11 +231,12 @@ class Env(object):
             if not re.match(r'[A-Za-z_][A-Za-z_0-9]*', name):
                 continue
             value = value.replace(r'\n', '\n').replace(r'\t', '\t')
-            self.env.setdefault(name, value)
+            new_env[name] = value
 
         for name, value in overrides.items():
-            self.env.setdefault(name, value)
+            new_env[name]
 
+        self._replace_env(new_env)
         return self
 
 # Convenience object if no schema is required.
