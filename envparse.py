@@ -117,6 +117,14 @@ class Env(object):
             value = postprocessor(value)
         return value
 
+    def all(self):
+        """
+        Return a generator over all key-value pairs, parsing them on the fly.
+        """
+        keys = self.schema.keys() if self.schema else self.env.keys()
+        for key in keys:
+            yield (key, self.__call__(key))
+
     @classmethod
     def cast(cls, value, cast=str, subcast=None):
         """

@@ -24,14 +24,20 @@ env_vars = dict(
     REDIS_URL='redis://:redispass@127.0.0.1:6379/0'
 )
 
+schema = dict(
+    STR=str,
+    STR_DEFAULT=dict(cast=str, default='default'),
+    INT=int,
+    LIST_STR=list,
+    LIST_INT=dict(cast=list, subcast=int)
+)
+
 
 @pytest.fixture(autouse=True, params=['schema', 'schemaless'])
 def proto_env(request):
     """Create a schema or a schemaless Env object."""
     if request.param == 'schema':
-        return Env(STR=str, STR_DEFAULT=dict(cast=str, default='default'),
-                   INT=int, LIST_STR=list,
-                   LIST_INT=dict(cast=list, subcast=int))
+        return Env(**schema)
     elif request.param == 'schemaless':
         return envparse.env
 
@@ -160,3 +166,11 @@ def test_postprocessor(env):
 
     assert_type_value(dict, expected, env.url('REDIS_URL',
                       postprocessor=django_redis))
+
+
+def test_all(env):
+    keys = schema.keys() if env.schema else env_vars.keys()
+    expected = dict((key, env(key)) for key in keys)
+    actual = dict(env.all())
+
+    assert expected == actual
