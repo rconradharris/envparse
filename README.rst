@@ -182,9 +182,19 @@ Read from a .env file (line delimited KEY=VALUE):
     # Values can be read as normal
     env.int('FOO')
 
+Contributing
+------------
+
+Clone the repo, create a virtualenv then run:
+
+    $ make install
+
+which will install the package as well any dependencies required for running the
+tests.
 
 Tests
------
+~~~~~
+
 .. image:: https://secure.travis-ci.org/rconradharris/envparse.png?branch=master
 
 To run the tests install tox::

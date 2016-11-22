@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.test import test as TestCommand
 import codecs
 import os
@@ -36,10 +36,11 @@ class PyTest(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
-        #import here, cause outside the eggs aren't loaded
+        # import here, cause outside the eggs aren't loaded
         import pytest
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
+
 
 setup(
     name='envparse',
@@ -56,7 +57,7 @@ setup(
     py_modules=['envparse'],
     platforms='any',
     zip_safe=False,
-    classifiers = [
+    classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
@@ -70,6 +71,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         ],
     extras_require={
-        'testing': ['pytest'],
+        'testing': ['pytest', 'tox', 'flake8', 'coverage'],
       }
 )

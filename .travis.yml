@@ -12,6 +12,6 @@ env:
     - TOXENV=pypy3
     - TOXENV=flake8
 install:
-  - travis_retry pip install tox
+    - travis_retry make install
 script:
-  - make test
+    - make test

@@ -164,9 +164,12 @@ class Env(object):
     url = shortcut(urlparse.urlparse)
 
     @staticmethod
-    def read_envfile(path=None, **overrides):
+    def read_envfile(path=None, _overwrite=False, **overrides):
         """
         Read a .env file (line delimited KEY=VALUE) into os.environ.
+
+        If _overwrite is True, then existing environment variables will be overwritten by the
+        values within the file.
 
         If not given a path to the file, recurses up the directory tree until
         found.
@@ -178,6 +181,12 @@ class Env(object):
             frame = inspect.currentframe().f_back
             caller_dir = os.path.dirname(frame.f_code.co_filename)
             path = os.path.join(os.path.abspath(caller_dir), '.env')
+
+        # Determine function to use for updating environment variables
+        if _overwrite:
+            set_env_var = os.environ.__setitem__
+        else:
+            set_env_var = os.environ.setdefault
 
         try:
             with open(path, 'r') as f:
@@ -208,10 +217,11 @@ class Env(object):
             if not re.match(r'[A-Za-z_][A-Za-z_0-9]*', name):
                 continue
             value = value.replace(r'\n', '\n').replace(r'\t', '\t')
-            os.environ.setdefault(name, value)
+            set_env_var(name, value)
 
         for name, value in overrides.items():
-            os.environ.setdefault(name, value)
+            set_env_var(name, value)
+
 
 # Convenience object if no schema is required.
 env = Env()

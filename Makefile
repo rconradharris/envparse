@@ -8,6 +8,9 @@ help:
 	@echo '   make test         run the test suite'
 	@echo ''
 
+install:
+	pip install -e .[testing]
+
 release:
 	python setup.py register sdist bdist_wheel upload
 
