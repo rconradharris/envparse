@@ -19,7 +19,7 @@ except ImportError:
 __version__ = '0.2.0'
 
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 class ConfigurationError(Exception):
