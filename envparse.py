@@ -8,7 +8,6 @@ import logging
 import os
 import re
 import shlex
-import warnings
 try:
     import urllib.parse as urlparse
 except ImportError:
@@ -192,7 +191,7 @@ class Env(object):
                 Env.read_envfile(path, **overrides)
             else:
                 # Reached top level directory.
-                warnings.warn('Could not any envfile.')
+                logger.debug('Could not find any envfile.')
             return
 
         logger.debug('Reading environment variables from: %s', path)
