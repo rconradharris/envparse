@@ -192,7 +192,7 @@ class Env(object):
                 Env.read_envfile(path, **overrides)
             else:
                 # Reached top level directory.
-                warnings.warn('Could not any envfile.')
+                warnings.warn('Could not find any envfile.')
             return
 
         logger.debug('Reading environment variables from: %s', path)
