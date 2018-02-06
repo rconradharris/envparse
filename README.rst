@@ -167,6 +167,22 @@ An example of one might be returning a datastructure expected by a framework:
         'LOCATION': '127.0.0.1:6379:0', 'OPTIONS': {'PASSWORD': 'redispass'}}
 
 
+Value Validators
+~~~~~~~~~~~~~~~~
+Value validators are callables that are run on the environment variable after a
+preprocessor, type casting and postprocessor. If the return value of the validator
+is falsy, error will be raised.
+
+.. code-block:: python
+
+    import logging
+
+    to_upper = lambda v: v.upper()
+
+    env('LOG_LEVEL', preprocessor=to_upper, validator=lambda v: hasattr(logging, v))
+    env.int('PORT', validator=lambda v: v > 0 and v < 65535)
+
+
 Environment File
 ~~~~~~~~~~~~~~~~
 Read from a .env file (line delimited KEY=VALUE):
@@ -191,6 +207,7 @@ To run the tests install tox::
 
     pip install tox
 
-Then run them with::
+Then run them with:
 
     make test
+

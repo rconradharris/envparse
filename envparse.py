@@ -16,7 +16,7 @@ except ImportError:
     import urlparse
 
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 
 
 logger = logging.getLogger(__file__)
@@ -57,7 +57,8 @@ class Env(object):
         self.schema = schema
 
     def __call__(self, var, default=NOTSET, cast=None, subcast=None,
-                 force=False, preprocessor=None, postprocessor=None):
+                 force=False, preprocessor=None, postprocessor=None,
+                 validator=None):
         """
         Return value for given environment variable.
 
@@ -69,6 +70,8 @@ class Env(object):
         :param force: force to cast to type even if default is set.
         :param preprocessor: callable to run on pre-casted value.
         :param postprocessor: callable to run on casted value.
+        :param validator: callable which should return truthy value, otherwise
+                          ConfigurationError will be thrown.
 
         :returns: Value from environment or default (if set).
         """
@@ -111,6 +114,9 @@ class Env(object):
             value = self.cast(value, cast, subcast)
         if postprocessor:
             value = postprocessor(value)
+        if validator and not validator(value):
+            raise ConfigurationError("Value '{}' is invalid for variable '{}'"
+                                     .format(value, var))
         return value
 
     @classmethod

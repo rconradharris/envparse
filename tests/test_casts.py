@@ -145,6 +145,15 @@ def test_postprocessor(monkeypatch):
                       postprocessor=django_redis))
 
 
+def test_validator():
+    env.int('INT', validator=lambda v: v in [41, 42])
+    env.json('JSON', validator=lambda v: 'foo' in v)
+    with pytest.raises(ConfigurationError):
+        env.int('INT', validator=lambda v: v in [1, 2])
+    with pytest.raises(ConfigurationError):
+        env.json('JSON', validator=lambda v: 'bar' in v)
+
+
 def test_schema():
     env = Env(STR=str, STR_DEFAULT=dict(cast=str, default='default'),
               INT=int, LIST_STR=list, LIST_INT=dict(cast=list, subcast=int))
