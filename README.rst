@@ -99,7 +99,7 @@ modify your app, you can simply make a configuration change:
 
 .. code-block:: bash
 
-    SMTP_LOGIN='{{MANDRILL_UESRNAME}}'
+    SMTP_LOGIN='{{MANDRILL_USERNAME}}'
 
 There are also a few convenience methods:
 
