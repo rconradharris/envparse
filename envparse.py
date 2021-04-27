@@ -84,6 +84,10 @@ class Env(object):
                     subcast = params.get('subcast', subcast)
                 if default == NOTSET:
                     default = params.get('default', default)
+                if preprocessor is None:
+                    preprocessor = params.get('preprocessor', preprocessor)
+                if postprocessor is None:
+                    postprocessor = params.get('postprocessor', postprocessor)
             else:
                 if cast is None:
                     cast = params
