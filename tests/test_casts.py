@@ -130,6 +130,13 @@ def test_dict_preprocessor(monkeypatch):
     
     assert_type_value(str, 'TEST_CASE', e('TEST'))
 
+def test_dict_postprocessor(monkeypatch):
+
+    monkeypatch.setenv('TEST', 'test')
+    e = Env(TEST=dict(cast=str, postprocessor=lambda x: x + "_case"))
+    
+    assert_type_value(str, 'test_case', e('TEST'))
+
 
 def test_postprocessor(monkeypatch):
     """
