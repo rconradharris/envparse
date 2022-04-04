@@ -164,12 +164,15 @@ class Env(object):
     url = shortcut(urlparse.urlparse)
 
     @staticmethod
-    def read_envfile(path=None, **overrides):
+    def read_envfile(path=None, override=False, **overrides):
         """
         Read a .env file (line delimited KEY=VALUE) into os.environ.
 
         If not given a path to the file, recurses up the directory tree until
         found.
+
+        If `override=True`, override the values in the environment. Defaults to
+        `False`, prioritising values in the environment over those in the file.
 
         Uses code from Honcho (github.com/nickstenning/honcho) for parsing the
         file.
@@ -208,10 +211,16 @@ class Env(object):
             if not re.match(r'[A-Za-z_][A-Za-z_0-9]*', name):
                 continue
             value = value.replace(r'\n', '\n').replace(r'\t', '\t')
-            os.environ.setdefault(name, value)
+            if override:
+                os.environ[name] = value
+            else:
+                os.environ.setdefault(name, value)
 
         for name, value in overrides.items():
-            os.environ.setdefault(name, value)
+            if override:
+                os.environ[name] = value
+            else:
+                os.environ.setdefault(name, value)
 
 # Convenience object if no schema is required.
 env = Env()
